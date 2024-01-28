@@ -1,5 +1,6 @@
 use crate::constants::*;
 
+#[derive(Clone, Debug)]
 pub struct Row {
     pub id: i32,
     pub username: String,
@@ -33,5 +34,14 @@ impl Row {
             username,
             email,
         }
+    }
+}
+
+impl PartialEq for Row {
+    // Define custom equality logic
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.username.trim_matches(char::from(0)) == other.username.trim_matches(char::from(0))
+            && self.email.trim_matches(char::from(0)) == other.email.trim_matches(char::from(0))
     }
 }
