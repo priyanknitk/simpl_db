@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use rand::seq::SliceRandom;
-    use pretty_assertions::{assert_eq, assert_ne};
+    use pretty_assertions::assert_eq;
     use crate::{
         enums::ExecuteResult,
         executor,
@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_node_splitting() {
-        let mut table = Table::open("test.db");
+        let mut table = open_table();
         let mut inserted_rows: Vec<Row> = Vec::new();
         for i in 0..crate::constants::LEAF_NODE_MAX_CELLS + 1 {
             let row_to_insert = Row {
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_node_splitting_insert_beginning() {
-        let mut table = Table::open("test.db");
+        let mut table = open_table();
         let mut inserted_rows: Vec<Row> = Vec::new();
         for i in (0..crate::constants::LEAF_NODE_MAX_CELLS + 1).rev() {
             let row_to_insert = Row {
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_node_splitting_insert_middle() {
-        let mut table = Table::open("test.db");
+        let mut table = open_table();
         let mut inserted_rows: Vec<Row> = Vec::new();
 
         // randomly pick a value from 0 to LEAF_NODE_MAX_CELLS, LEAF_NODE_MAX_CELLS times
@@ -172,6 +172,43 @@ mod tests {
                 _ => panic!("Error executing statement."),
             }
         }
+        let statement = Statement {
+            row_to_insert: None,
+            statement_type: StatementType::StatementSelect,
+        };
+        let execute_result = executor::execute_statement(&statement, &mut table);
+        match execute_result {
+            ExecuteResult::ExecuteSuccess => println!("Executed."),
+            _ => panic!("Error executing statement."),
+        }
+
+        // Un-comment once recursive search is implemented
+        // let mut cursor = table.table_start();
+        // for i in 0..inserted_rows.len() {
+        //     let row = Row::deserialize_row(cursor.cursor_value());
+        //     assert_eq!(row, inserted_rows[i], "row should match inserted row.");
+        //     cursor.advance();
+        // }
+    }
+
+    #[test]
+    fn test_insert_after_splitting() {
+        let mut table = open_table();
+        let mut inserted_rows: Vec<Row> = Vec::new();
+        for i in 0..(crate::constants::LEAF_NODE_MAX_CELLS + 2) {
+            let row_to_insert = Row {
+                id: i as i32,
+                username: "test".to_string(),
+                email: "test@dsa.com".to_string(),
+            };
+            let (execute_result, _) = insert_row_internal(&mut table, &row_to_insert);
+            inserted_rows.push(row_to_insert);
+            match execute_result {
+                ExecuteResult::ExecuteSuccess => println!("Executed."),
+                _ => panic!("Error executing statement."),
+            }
+        }
+
         let statement = Statement {
             row_to_insert: None,
             statement_type: StatementType::StatementSelect,

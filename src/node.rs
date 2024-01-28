@@ -45,11 +45,6 @@ pub fn leaf_node_key(node: &[u8], cell_num: usize) -> &[u8] {
     &cell[LEAF_NODE_KEY_OFFSET..LEAF_NODE_KEY_OFFSET + LEAF_NODE_KEY_SIZE]
 }
 
-pub fn leaf_node_key_mut(node: &mut [u8], cell_num: usize) -> &mut [u8] {
-    let cell = leaf_node_cell_mut(node, cell_num);
-    cell[LEAF_NODE_KEY_OFFSET..LEAF_NODE_KEY_OFFSET + LEAF_NODE_KEY_SIZE].as_mut()
-}
-
 pub fn leaf_node_value(node: &mut [u8], cell_num: usize) -> &mut [u8] {
     let cell = leaf_node_cell_mut(node, cell_num);
     cell[LEAF_NODE_KEY_SIZE..LEAF_NODE_KEY_SIZE + LEAF_NODE_VALUE_SIZE].as_mut()
@@ -109,7 +104,7 @@ pub fn set_node_type(node: &mut [u8], node_type: NodeType) {
     }
 }
 
-pub fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, row_to_insert: &Row) {
+pub fn leaf_node_split_and_insert(cursor: &mut Cursor, _key: u32, row_to_insert: &Row) {
     let new_page_num = cursor.table.pager.get_unused_page_num();
     let new_node_buffer = &mut [b'0'; PAGE_SIZE][..];
     let old_node = cursor.table.pager.get_page(cursor.page_num);
