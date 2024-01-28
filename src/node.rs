@@ -317,12 +317,7 @@ pub fn print_node_contents(node: &mut [u8]) {
             println!("Is root: {}", is_node_root(node));
             println!("Num cells: {}", leaf_node_num_cells(node));
             for i in 0..leaf_node_num_cells(node) {
-                println!(
-                    "Key: {}",
-                    u32::from_le_bytes(leaf_node_key(node, i as usize).try_into().unwrap())
-                );
-                let row = Row::deserialize_row(leaf_node_value(node, i as usize));
-                println!("Row: ({}, {}, {})", row.id, row.username, row.email);
+                print_cell(node, i as usize);
             }
         }
     }
