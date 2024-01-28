@@ -85,12 +85,10 @@ pub fn leaf_node_insert(cursor: &mut Cursor, key: u32, row_to_insert: &Row) {
         }
     }
     // insert the new cell
-    let leaf_node_key = leaf_node_key_mut(node, cursor.cell_num);
-    leaf_node_key.copy_from_slice(&key.to_le_bytes());
     node[LEAF_NODE_NUM_CELLS_OFFSET..LEAF_NODE_NUM_CELLS_OFFSET + LEAF_NODE_NUM_CELLS_SIZE]
         .copy_from_slice(&(num_cells + 1).to_le_bytes());
-    let destination = leaf_node_value(node, cursor.cell_num);
-    row_to_insert.serialize_row(destination);
+    let destination_cell = leaf_node_cell_mut(node, cursor.cell_num);
+    row_to_insert.serialize_row(destination_cell);
 }
 
 pub fn get_node_type(node: &[u8]) -> NodeType {
@@ -134,10 +132,8 @@ pub fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, row_to_insert: 
         let destination = leaf_node_cell_mut(destination_node, index_within_node);
         if i == cursor.cell_num {
             // copy key and value to the new node
-            let leaf_node_key = leaf_node_key_mut(destination_node, index_within_node);
-            leaf_node_key.copy_from_slice(&key.to_le_bytes());
-            let destination = leaf_node_value(destination_node, index_within_node);
-            row_to_insert.serialize_row(destination);
+            let destination_cell = leaf_node_cell_mut(destination_node, index_within_node);
+            row_to_insert.serialize_row(destination_cell);
         } else if i > cursor.cell_num {
             let source = leaf_node_cell_unmut(old_node, i - 1);
             destination.copy_from_slice(source);
@@ -321,12 +317,7 @@ pub fn print_node_contents(node: &mut [u8]) {
             println!("Is root: {}", is_node_root(node));
             println!("Num cells: {}", leaf_node_num_cells(node));
             for i in 0..leaf_node_num_cells(node) {
-                println!(
-                    "Key: {}",
-                    u32::from_le_bytes(leaf_node_key(node, i as usize).try_into().unwrap())
-                );
-                let row = Row::deserialize_row(leaf_node_value(node, i as usize));
-                println!("Row: ({}, {}, {})", row.id, row.username, row.email);
+                print_cell(node, i as usize);
             }
         }
     }

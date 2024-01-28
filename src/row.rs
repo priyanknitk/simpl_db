@@ -8,15 +8,20 @@ pub struct Row {
 }
 
 impl Row {
-    pub fn serialize_row(&self, destination: &mut [u8]) {
+    pub fn serialize_row(&self, destination_cell: &mut [u8]) {
         let id_bytes = self.id.to_le_bytes();
         let username_bytes = self.username.as_bytes();
         let email_bytes = self.email.as_bytes();
 
-        destination[ID_OFFSET..ID_OFFSET + id_bytes.len()].copy_from_slice(&id_bytes);
-        destination[USERNAME_OFFSET..USERNAME_OFFSET + username_bytes.len()]
+        let destination_key_slice = &mut destination_cell[..LEAF_NODE_KEY_SIZE];
+        destination_key_slice[..ID_SIZE].copy_from_slice(&id_bytes);
+
+        let cell_value_offset = LEAF_NODE_KEY_SIZE;
+        let destination_value_slice = &mut destination_cell[cell_value_offset..];
+        destination_value_slice[ID_OFFSET..ID_OFFSET + id_bytes.len()].copy_from_slice(&id_bytes);
+        destination_value_slice[USERNAME_OFFSET..USERNAME_OFFSET + username_bytes.len()]
             .copy_from_slice(username_bytes);
-        destination[EMAIL_OFFSET..EMAIL_OFFSET + email_bytes.len()].copy_from_slice(email_bytes);
+        destination_value_slice[EMAIL_OFFSET..EMAIL_OFFSET + email_bytes.len()].copy_from_slice(email_bytes);
     }
 
     pub fn deserialize_row(source: &[u8]) -> Self {

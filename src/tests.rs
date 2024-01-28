@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use rand::seq::SliceRandom;
-
+    use pretty_assertions::{assert_eq, assert_ne};
     use crate::{
         enums::ExecuteResult,
         executor,
