@@ -14,6 +14,9 @@ mod statement;
 mod table;
 mod parser;
 
+#[cfg(test)]
+mod tests;
+
 const DEFAULT_DB_FILE_PATH: &str = ".\\myDb.db";
 
 fn main() {
