@@ -57,14 +57,12 @@ impl Table {
         let node = self.pager.get_page(page_num);
         let num_cells = leaf_node_num_cells(node);
         let cell_num = binary_search_leaf(node, key, num_cells);
-        let mut cursor = Cursor {
+        Cursor {
             table: self,
             page_num,
-            cell_num: 0,
+            cell_num,
             end_of_table: false,
-        };
-        cursor.cell_num = cell_num;
-        cursor
+        }
     }
 
     pub fn internal_node_find(&mut self, page_num: usize, key: u32) -> Cursor {
@@ -99,15 +97,12 @@ impl Table {
     }
 
     pub fn table_start(&mut self) -> Cursor {
-        let root_page_num = self.root_page_num;
-        let root_node = self.pager.get_page(root_page_num);
-        let num_cells = leaf_node_num_cells(root_node);
-        Cursor {
-            table: self,
-            page_num: root_page_num,
-            cell_num: 0,
-            end_of_table: num_cells == 0,
-        }
+        let page_num = self.get_page_num_for_key(0);
+        let node = self.pager.get_page(page_num);
+        let num_cells = leaf_node_num_cells(node);
+        let mut cursor = self.table_find(0);
+        cursor.end_of_table = num_cells == 0;
+        cursor
     }
 
     pub fn db_close(&mut self) {
@@ -117,5 +112,10 @@ impl Table {
             }
             self.pager.pager_flush(i);
         }
+    }
+
+    fn get_page_num_for_key(&mut self, key: u32) -> usize {
+        let cursor = self.table_find(key);
+        cursor.page_num
     }
 }
