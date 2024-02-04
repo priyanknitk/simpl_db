@@ -185,7 +185,7 @@ mod tests {
     fn test_insert_after_splitting() {
         let mut table = open_table();
         let mut inserted_rows: Vec<Row> = Vec::new();
-        for i in 0..(crate::constants::LEAF_NODE_MAX_CELLS + 2) {
+        for i in 0..(crate::constants::LEAF_NODE_MAX_CELLS + 3) {
             let row_to_insert = Row {
                 id: (i + 1) as i32,
                 username: "test".to_string(),

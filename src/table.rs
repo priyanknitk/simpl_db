@@ -1,3 +1,4 @@
+use crate::constants::PAGE_SIZE;
 use crate::pager::Pager;
 use crate::cursor::Cursor;
 use crate::enums::NodeType;
@@ -65,29 +66,31 @@ impl Table {
         }
     }
 
-    pub fn internal_node_find(&mut self, page_num: usize, key: u32) -> Cursor {
-        fn binary_search_internal(root_node: &mut [u8], key: u32, num_keys: u32) -> usize {
-            let mut min_index = 0;
-            let mut max_index = num_keys as usize;
-            while max_index != min_index {
-                let index = (min_index + max_index) / 2;
-                let key_to_right = u32::from_le_bytes(
-                    internal_node_key(root_node, index + 1).try_into().unwrap(),
-                );
-                if key_to_right >= key {
-                    max_index = index;
-                } else {
-                    min_index = index + 1;
-                }
+    pub fn internal_node_find_child(&mut self, root_node: &mut [u8], key: u32, num_keys: u32) -> usize {
+        let mut min_index = 0;
+        let mut max_index = num_keys as usize;
+        while max_index != min_index {
+            let index = (min_index + max_index) / 2;
+            let key_to_right = u32::from_le_bytes(
+                internal_node_key(root_node, index + 1).try_into().unwrap(),
+            );
+            if key_to_right >= key {
+                max_index = index;
+            } else {
+                min_index = index + 1;
             }
-            min_index
         }
+        min_index
+    }
 
+    pub fn internal_node_find(&mut self, page_num: usize, key: u32) -> Cursor {
         let node = self.pager.get_page(page_num);
-        let num_keys = internal_node_num_keys(node);
-        let child_index = binary_search_internal(node, key, num_keys);
+        let mut node_buffer = [0u8; PAGE_SIZE];
+        node_buffer.copy_from_slice(node);
+        let num_keys = internal_node_num_keys(&mut node_buffer);
+        let child_index = self.internal_node_find_child(&mut node_buffer, key, num_keys);
         let child_num = usize::from_le_bytes(
-            internal_node_child(node, child_index).try_into().unwrap(),
+            internal_node_child(&mut node_buffer, child_index).try_into().unwrap(),
         ) as usize;
         let child_node = self.pager.get_page(child_num);
         match get_node_type(child_node) {

@@ -20,6 +20,7 @@ pub const IS_ROOT_SIZE: usize = mem::size_of::<u8>();
 pub const IS_ROOT_OFFSET: usize = NODE_TYPE_SIZE;
 
 pub const PARENT_POINTER_SIZE: usize = mem::size_of::<u32>();
+pub const PARENT_POINTER_OFFSET: usize = IS_ROOT_OFFSET + IS_ROOT_SIZE;
 
 pub const COMMON_NODE_HEADER_SIZE: usize = NODE_TYPE_SIZE + IS_ROOT_SIZE + PARENT_POINTER_SIZE;
 
@@ -58,3 +59,5 @@ pub const INTERNAL_NODE_HEADER_SIZE: usize =
 pub const INTERNAL_NODE_KEY_SIZE: usize = mem::size_of::<u32>();
 pub const INTERNAL_NODE_CHILD_SIZE: usize = mem::size_of::<u32>();
 pub const INTERNAL_NODE_CELL_SIZE: usize = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
+
+pub const INTERNAL_NODE_MAX_CELLS: usize = 3;
