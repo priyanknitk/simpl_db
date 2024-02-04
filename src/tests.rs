@@ -82,7 +82,7 @@ mod tests {
         let mut inserted_rows: Vec<Row> = Vec::new();
         for i in 0..crate::constants::LEAF_NODE_MAX_CELLS + 1 {
             let row_to_insert = Row {
-                id: i as i32,
+                id: (i + 1) as i32,
                 username: "test".to_string(),
                 email: "test@test.com".to_string(),
             };
@@ -104,13 +104,7 @@ mod tests {
             _ => panic!("Error executing statement."),
         }
         
-        // Un-comment once recursive search is implemented
-        // let mut cursor = table.table_start();
-        // for i in 0..inserted_rows.len() {
-        //     let row = Row::deserialize_row(cursor.cursor_value());
-        //     assert_eq!(row, inserted_rows[i], "row should match inserted row.");
-        //     cursor.advance();
-        // }
+        compare_data(&mut table, inserted_rows);
     }
 
     #[test]
@@ -119,7 +113,7 @@ mod tests {
         let mut inserted_rows: Vec<Row> = Vec::new();
         for i in (0..crate::constants::LEAF_NODE_MAX_CELLS + 1).rev() {
             let row_to_insert = Row {
-                id: i as i32,
+                id: (i + 1) as i32,
                 username: "test".to_string(),
                 email: "test@test.com".to_string(),
             };
@@ -130,6 +124,10 @@ mod tests {
                 _ => panic!("Error executing statement."),
             }
         }
+
+        // sort the inserted rows in ascending order
+        inserted_rows.sort_by(|a, b| a.id.cmp(&b.id));
+
         let statement = Statement {
             row_to_insert: None,
             statement_type: StatementType::StatementSelect,
@@ -140,13 +138,7 @@ mod tests {
             _ => panic!("Error executing statement."),
         }
 
-        // Un-comment once recursive search is implemented
-        // let mut cursor = table.table_start();
-        // for i in 0..inserted_rows.len() {
-        //     let row = Row::deserialize_row(cursor.cursor_value());
-        //     assert_eq!(row, inserted_rows[i], "row should match inserted row.");
-        //     cursor.advance();
-        // }
+        compare_data(&mut table, inserted_rows);
     }
 
     #[test]
@@ -156,7 +148,7 @@ mod tests {
 
         // randomly pick a value from 0 to LEAF_NODE_MAX_CELLS, LEAF_NODE_MAX_CELLS times
         let mut rng = rand::thread_rng();
-        let mut random_values: Vec<usize> = (0..crate::constants::LEAF_NODE_MAX_CELLS + 1).collect();
+        let mut random_values: Vec<usize> = (1..crate::constants::LEAF_NODE_MAX_CELLS + 2).collect();
         random_values.shuffle(&mut rng);
 
         for key in random_values {
@@ -172,6 +164,10 @@ mod tests {
                 _ => panic!("Error executing statement."),
             }
         }
+
+        // sort the inserted rows in ascending order
+        inserted_rows.sort_by(|a, b| a.id.cmp(&b.id));
+        
         let statement = Statement {
             row_to_insert: None,
             statement_type: StatementType::StatementSelect,
@@ -182,13 +178,7 @@ mod tests {
             _ => panic!("Error executing statement."),
         }
 
-        // Un-comment once recursive search is implemented
-        // let mut cursor = table.table_start();
-        // for i in 0..inserted_rows.len() {
-        //     let row = Row::deserialize_row(cursor.cursor_value());
-        //     assert_eq!(row, inserted_rows[i], "row should match inserted row.");
-        //     cursor.advance();
-        // }
+        compare_data(&mut table, inserted_rows);
     }
 
     #[test]
@@ -197,7 +187,7 @@ mod tests {
         let mut inserted_rows: Vec<Row> = Vec::new();
         for i in 0..(crate::constants::LEAF_NODE_MAX_CELLS + 2) {
             let row_to_insert = Row {
-                id: i as i32,
+                id: (i + 1) as i32,
                 username: "test".to_string(),
                 email: "test@dsa.com".to_string(),
             };
@@ -219,19 +209,22 @@ mod tests {
             _ => panic!("Error executing statement."),
         }
 
-        // Un-comment once recursive search is implemented
-        // let mut cursor = table.table_start();
-        // for i in 0..inserted_rows.len() {
-        //     let row = Row::deserialize_row(cursor.cursor_value());
-        //     assert_eq!(row, inserted_rows[i], "row should match inserted row.");
-        //     cursor.advance();
-        // }
+        compare_data(&mut table, inserted_rows);
     }
 
     // Helper functions
 
     fn open_table() -> Table {
         Table::open(DEFAULT_DB_FILE_PATH)
+    }
+
+    fn compare_data(table: &mut Table, inserted_rows: Vec<Row>) {
+        let mut cursor = table.table_start();
+        for i in 0..inserted_rows.len() {
+            let row = Row::deserialize_row(cursor.cursor_value());
+            assert_eq!(row, inserted_rows[i], "row should match inserted row.");
+            cursor.advance();
+        }
     }
 
     fn insert_row(table: &mut Table) -> (ExecuteResult, Row) {
