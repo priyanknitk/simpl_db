@@ -185,7 +185,7 @@ pub fn leaf_node_split_and_insert(cursor: &mut Cursor, _key: u32, row_to_insert:
                 .table
                 .internal_node_find_child(parent_node_buffer, old_max_key, num_keys);
         let parent_node = cursor.table.pager.get_page(parent_page_num as usize);
-        update_internal_node_key(parent_node, old_max_key, new_max_key, old_child_num);
+        update_internal_node_key(parent_node, new_max_key, old_child_num);
         internal_node_insert(cursor.table, parent_page_num as usize, new_page_num);
     }
 }
@@ -432,7 +432,6 @@ fn internal_node_split_and_insert(
 
     update_internal_node_key(
         parent_node_buffer,
-        old_max,
         get_node_max_key(table, old_node_buffer),
         old_child_num,
     );
@@ -579,7 +578,7 @@ pub fn set_node_parent(node: &mut [u8], parent: u32) {
     parent_pointer_slice.copy_from_slice(&parent.to_le_bytes());
 }
 
-pub fn update_internal_node_key(node: &mut [u8], old_key: u32, new_key: u32, old_child_num: usize) {
+pub fn update_internal_node_key(node: &mut [u8], new_key: u32, old_child_num: usize) {
     let cell = internal_node_cell_mut(node, old_child_num);
     cell[0..INTERNAL_NODE_KEY_SIZE].copy_from_slice(&new_key.to_le_bytes());
 }
