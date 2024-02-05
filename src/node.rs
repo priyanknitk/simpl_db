@@ -262,7 +262,7 @@ pub fn create_new_root(table: &mut Table, right_child_page_num: usize) {
     internal_node_child(new_root_buffer, 0).copy_from_slice(&left_child_page_num.to_le_bytes());
     let left_child_max_key = get_node_max_key(table, new_left_child_buffer);
     internal_node_key_mut(new_root_buffer, 0).copy_from_slice(&left_child_max_key.to_le_bytes());
-    internal_node_right_child(new_root_buffer).copy_from_slice(&right_child_page_num.to_le_bytes());
+    set_internal_node_right_child(new_root_buffer, right_child_page_num);
 
     // copy the buffers back to the pages
     let root = table.pager.get_page(table.root_page_num);
@@ -301,6 +301,9 @@ fn internal_node_insert(table: &mut Table, parent_page_num: usize, child_page_nu
     // if the right child is invalid, just insert the new child
     if right_child_page_num == INVALID_PAGE_NUMBER {
         set_internal_node_right_child(parent_node_buffer, child_page_num);
+        // copy the buffer back to the page
+        let parent = table.pager.get_page(parent_page_num);
+        parent.copy_from_slice(parent_node_buffer);
         return;
     }
 
