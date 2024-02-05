@@ -261,7 +261,7 @@ pub fn create_new_root(table: &mut Table, right_child_page_num: usize) {
     internal_node_num_keys_mut(new_root_buffer).copy_from_slice(&num_keys_root_value.to_le_bytes());
     internal_node_child(new_root_buffer, 0).copy_from_slice(&left_child_page_num.to_le_bytes());
     let left_child_max_key = get_node_max_key(table, new_left_child_buffer);
-    internal_node_key_mut(new_root_buffer, 0).copy_from_slice(&left_child_max_key.to_le_bytes());
+    set_internal_node_key(new_root_buffer, left_child_max_key, 0);
     set_internal_node_right_child(new_root_buffer, right_child_page_num);
 
     // copy the buffers back to the pages
@@ -321,8 +321,7 @@ fn internal_node_insert(table: &mut Table, parent_page_num: usize, child_page_nu
         // Replace right child
         internal_node_child(parent_node_buffer, parent_node_num_keys as usize)
             .copy_from_slice(&right_child_page_num.to_le_bytes());
-        let key_slice = internal_node_key_mut(parent_node_buffer, parent_node_num_keys as usize);
-        key_slice.copy_from_slice(&get_node_max_key(table, right_child_buffer).to_le_bytes());
+        set_internal_node_key(parent_node_buffer, get_node_max_key(table, right_child_buffer), parent_node_num_keys as usize);
         set_internal_node_right_child(parent_node_buffer, child_page_num);
     } else {
         // Make room for the new cell
@@ -336,8 +335,7 @@ fn internal_node_insert(table: &mut Table, parent_page_num: usize, child_page_nu
         }
         internal_node_child(parent_node_buffer, index)
             .copy_from_slice(&child_page_num.to_le_bytes());
-        let key_slice = internal_node_key_mut(parent_node_buffer, index);
-        key_slice.copy_from_slice(&child_max_key.to_le_bytes());
+        set_internal_node_key(parent_node_buffer, child_max_key, index);
     }
 
     // copy the buffer back to the page
@@ -514,9 +512,9 @@ pub fn internal_node_key(node: &[u8], cell_num: usize) -> &[u8] {
     &cell[0..INTERNAL_NODE_KEY_SIZE]
 }
 
-pub fn internal_node_key_mut(node: &mut [u8], cell_num: usize) -> &mut [u8] {
+fn set_internal_node_key(node: &mut [u8], key: u32, cell_num: usize) {
     let cell = internal_node_cell_mut(node, cell_num);
-    &mut cell[..INTERNAL_NODE_KEY_SIZE]
+    cell[0..INTERNAL_NODE_KEY_SIZE].copy_from_slice(&key.to_le_bytes());
 }
 
 pub fn internal_node_child(node: &mut [u8], child_num: usize) -> &mut [u8] {
