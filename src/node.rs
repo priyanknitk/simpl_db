@@ -259,7 +259,7 @@ pub fn create_new_root(table: &mut Table, right_child_page_num: usize) {
     set_node_root(new_root_buffer, true);
     let num_keys_root_value: u32 = 1;
     internal_node_num_keys_mut(new_root_buffer).copy_from_slice(&num_keys_root_value.to_le_bytes());
-    internal_node_child(new_root_buffer, 0).copy_from_slice(&left_child_page_num.to_le_bytes());
+    set_internal_node_child(new_root_buffer, left_child_page_num, 0);
     let left_child_max_key = get_node_max_key(table, new_left_child_buffer);
     set_internal_node_key(new_root_buffer, left_child_max_key, 0);
     set_internal_node_right_child(new_root_buffer, right_child_page_num);
@@ -283,10 +283,6 @@ fn internal_node_insert(table: &mut Table, parent_page_num: usize, child_page_nu
     let child_max_key = get_node_max_key(table, child);
     let index =
         table.internal_node_find_child(parent_node_buffer, child_max_key, parent_node_num_keys);
-
-    // // increment internal node num keys
-    // let new_num_keys = parent_node_num_keys + 1;
-    // internal_node_num_keys_mut(parent_node_buffer).copy_from_slice(&new_num_keys.to_le_bytes());
 
     if parent_node_num_keys >= INTERNAL_NODE_MAX_CELLS as u32 {
         internal_node_split_and_insert(table, parent_page_num, child_page_num);
@@ -319,8 +315,7 @@ fn internal_node_insert(table: &mut Table, parent_page_num: usize, child_page_nu
 
     if child_max_key > get_node_max_key(table, right_child_buffer) {
         // Replace right child
-        internal_node_child(parent_node_buffer, parent_node_num_keys as usize)
-            .copy_from_slice(&right_child_page_num.to_le_bytes());
+        set_internal_node_child(parent_node_buffer, parent_node_num_keys as usize, right_child_page_num);
         set_internal_node_key(parent_node_buffer, get_node_max_key(table, right_child_buffer), parent_node_num_keys as usize);
         set_internal_node_right_child(parent_node_buffer, child_page_num);
     } else {
@@ -333,8 +328,7 @@ fn internal_node_insert(table: &mut Table, parent_page_num: usize, child_page_nu
             parent_node_buffer[destination_offset..destination_offset + INTERNAL_NODE_CELL_SIZE]
                 .copy_from_slice(&cloned_slice);
         }
-        internal_node_child(parent_node_buffer, index)
-            .copy_from_slice(&child_page_num.to_le_bytes());
+        set_internal_node_child(parent_node_buffer, child_page_num, index);
         set_internal_node_key(parent_node_buffer, child_max_key, index);
     }
 
@@ -386,7 +380,6 @@ fn internal_node_split_and_insert(
         new_node_buffer.copy_from_slice(new_node);
     }
 
-    let mut old_num_keys = internal_node_num_keys(old_node_buffer);
     let mut cur_page_num = usize::from_le_bytes(
         internal_node_right_child_unmut(old_node_buffer)
             .try_into()
@@ -415,7 +408,7 @@ fn internal_node_split_and_insert(
 
     // Set child before middle key which is now the highest key to be node's right child
     // and decrement the number of keys
-    old_num_keys = internal_node_num_keys(old_node_buffer);
+    let old_num_keys = internal_node_num_keys(old_node_buffer);
     let old_node_child = internal_node_child(old_node_buffer, (old_num_keys - 1) as usize);
     let old_node_child_num = usize::from_le_bytes(old_node_child.try_into().unwrap());
 
@@ -515,6 +508,11 @@ pub fn internal_node_key(node: &[u8], cell_num: usize) -> &[u8] {
 fn set_internal_node_key(node: &mut [u8], key: u32, cell_num: usize) {
     let cell = internal_node_cell_mut(node, cell_num);
     cell[0..INTERNAL_NODE_KEY_SIZE].copy_from_slice(&key.to_le_bytes());
+}
+
+fn set_internal_node_child(node: &mut [u8], child_page_num: usize, child_num: usize) {
+    let node_child = internal_node_child(node, child_num);
+    node_child.copy_from_slice(&child_page_num.to_le_bytes());
 }
 
 pub fn internal_node_child(node: &mut [u8], child_num: usize) -> &mut [u8] {
