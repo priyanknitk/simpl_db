@@ -258,7 +258,8 @@ pub fn create_new_root(table: &mut Table, right_child_page_num: usize) {
     initialize_internal_node(new_root_buffer);
     set_node_root(new_root_buffer, true);
     let num_keys_root_value: u32 = 1;
-    internal_node_num_keys_mut(new_root_buffer).copy_from_slice(&num_keys_root_value.to_le_bytes());
+    
+    set_internal_node_num_keys(new_root_buffer, num_keys_root_value);
     set_internal_node_child(new_root_buffer, left_child_page_num, 0);
     let left_child_max_key = get_node_max_key(table, new_left_child_buffer);
     set_internal_node_key(new_root_buffer, left_child_max_key, 0);
@@ -460,17 +461,17 @@ pub fn internal_node_num_keys(node: &[u8]) -> u32 {
 
 fn increment_internal_node_num_keys(node: &mut [u8]) {
     let num_keys = internal_node_num_keys(node);
-    internal_node_num_keys_mut(node).copy_from_slice(&(num_keys + 1).to_le_bytes());
+    set_internal_node_num_keys(node, num_keys + 1);
 }
 
 fn decrement_internal_node_num_keys(node: &mut [u8]) {
     let num_keys = internal_node_num_keys(node);
-    internal_node_num_keys_mut(node).copy_from_slice(&(num_keys - 1).to_le_bytes());
+    set_internal_node_num_keys(node, num_keys - 1);
 }
 
-pub fn internal_node_num_keys_mut(node: &mut [u8]) -> &mut [u8] {
+pub fn set_internal_node_num_keys(node: &mut [u8], num_keys: u32) {
     node[INTERNAL_NODE_NUM_KEYS_OFFSET..INTERNAL_NODE_NUM_KEYS_OFFSET + INTERNAL_NODE_NUM_KEYS_SIZE]
-        .as_mut()
+        .as_mut().copy_from_slice(&num_keys.to_le_bytes());
 }
 
 pub fn set_internal_node_right_child(node: &mut [u8], right_child_page_num: usize) {
@@ -580,7 +581,7 @@ pub fn set_node_parent(node: &mut [u8], parent: u32) {
 
 pub fn update_internal_node_key(node: &mut [u8], new_key: u32, old_child_num: usize) {
     let cell = internal_node_cell_mut(node, old_child_num);
-    cell[0..INTERNAL_NODE_CHILD_SIZE].copy_from_slice(&new_key.to_le_bytes());
+    cell[..INTERNAL_NODE_CHILD_SIZE].copy_from_slice(&new_key.to_le_bytes());
 }
 
 pub fn print_node_contents(node: &mut [u8]) {
