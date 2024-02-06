@@ -315,7 +315,7 @@ fn internal_node_insert(table: &mut Table, parent_page_num: usize, child_page_nu
 
     if child_max_key > get_node_max_key(table, right_child_buffer) {
         // Replace right child
-        set_internal_node_child(parent_node_buffer, parent_node_num_keys as usize, right_child_page_num);
+        set_internal_node_child(parent_node_buffer, right_child_page_num, parent_node_num_keys as usize,);
         set_internal_node_key(parent_node_buffer, get_node_max_key(table, right_child_buffer), parent_node_num_keys as usize);
         set_internal_node_right_child(parent_node_buffer, child_page_num);
     } else {
@@ -580,7 +580,7 @@ pub fn set_node_parent(node: &mut [u8], parent: u32) {
 
 pub fn update_internal_node_key(node: &mut [u8], new_key: u32, old_child_num: usize) {
     let cell = internal_node_cell_mut(node, old_child_num);
-    cell[0..INTERNAL_NODE_KEY_SIZE].copy_from_slice(&new_key.to_le_bytes());
+    cell[0..INTERNAL_NODE_CHILD_SIZE].copy_from_slice(&new_key.to_le_bytes());
 }
 
 pub fn print_node_contents(node: &mut [u8]) {
