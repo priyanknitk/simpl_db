@@ -57,7 +57,9 @@ pub const INTERNAL_NODE_HEADER_SIZE: usize =
 
 // Internal Node Body Layout
 pub const INTERNAL_NODE_KEY_SIZE: usize = mem::size_of::<u32>();
-pub const INTERNAL_NODE_CHILD_SIZE: usize = mem::size_of::<u32>();
+pub const INTERNAL_NODE_CHILD_SIZE: usize = mem::size_of::<usize>();
 pub const INTERNAL_NODE_CELL_SIZE: usize = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
 
 pub const INTERNAL_NODE_MAX_CELLS: usize = 3;
+
+pub const INVALID_PAGE_NUMBER: usize = std::usize::MAX;

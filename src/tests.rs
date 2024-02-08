@@ -212,6 +212,37 @@ mod tests {
         compare_data(&mut table, inserted_rows);
     }
 
+    #[test]
+    fn test_insert_many_rows() {
+        let mut table = open_table();
+        let mut inserted_rows: Vec<Row> = Vec::new();
+        for i in 0..(crate::constants::LEAF_NODE_MAX_CELLS*10) {
+            let row_to_insert = Row {
+                id: (i + 1) as i32,
+                username: "test".to_string(),
+                email: "test@dsa.com".to_string(),
+            };
+            let (execute_result, _) = insert_row_internal(&mut table, &row_to_insert);
+            inserted_rows.push(row_to_insert);
+            match execute_result {
+                ExecuteResult::ExecuteSuccess => println!("Executed."),
+                _ => panic!("Error executing statement."),
+            }
+        }
+
+        let statement = Statement {
+            row_to_insert: None,
+            statement_type: StatementType::StatementSelect,
+        };
+        let execute_result = executor::execute_statement(&statement, &mut table);
+        match execute_result {
+            ExecuteResult::ExecuteSuccess => println!("Executed."),
+            _ => panic!("Error executing statement."),
+        }
+
+        compare_data(&mut table, inserted_rows);
+    }
+
     // Helper functions
 
     fn open_table() -> Table {

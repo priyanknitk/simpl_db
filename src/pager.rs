@@ -97,6 +97,21 @@ impl Pager {
         self.pages[page_num].as_mut().unwrap()
     }
 
+
+    pub fn get_page_unmut(&self, page_num: usize) -> &[u8] {
+        if page_num > TABLE_MAX_PAGES {
+            eprintln!(
+                "Tried to fetch page number out of bounds. {} > {}",
+                page_num, TABLE_MAX_PAGES
+            );
+            panic!("Tried to fetch page number out of bounds.");
+        }
+        if self.pages[page_num].is_none() {
+            panic!("Tried to fetch page number out of bounds.");
+        }
+        self.pages[page_num].as_ref().unwrap()
+    }
+
     pub fn get_unused_page_num(&self) -> usize {
         self.num_pages
     }
