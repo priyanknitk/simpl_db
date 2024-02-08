@@ -2,7 +2,7 @@ use crate::constants::PAGE_SIZE;
 use crate::pager::Pager;
 use crate::cursor::Cursor;
 use crate::enums::NodeType;
-use crate::node::{get_node_type, leaf_node_key, leaf_node_num_cells, initialize_leaf_node, set_node_root, internal_node_num_keys, internal_node_key, internal_node_child};
+use crate::node::{get_node_type, initialize_leaf_node, internal_node_child, internal_node_key, internal_node_num_keys, leaf_node_key, leaf_node_num_cells, set_node_root};
 
 pub struct Table {
     pub root_page_num: usize,
@@ -70,9 +70,9 @@ impl Table {
         let mut min_index = 0;
         let mut max_index = num_keys as usize;
         while max_index != min_index {
-            let index = (min_index + max_index) / 2;
+            let index: usize = (min_index + max_index) / 2;
             let key_to_right = u32::from_le_bytes(
-                internal_node_key(root_node, index + 1).try_into().unwrap(),
+                internal_node_key(root_node, index).try_into().unwrap(),
             );
             if key_to_right >= key {
                 max_index = index;

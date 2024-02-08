@@ -1,4 +1,4 @@
-use crate::constants::*;
+use crate::{constants::*, cursor};
 use crate::cursor::Cursor;
 use crate::enums::NodeType;
 use crate::row::Row;
@@ -190,7 +190,7 @@ pub fn leaf_node_split_and_insert(cursor: &mut Cursor, _key: u32, row_to_insert:
     }
 }
 
-pub fn is_node_root(node: &[u8]) -> bool {
+fn is_node_root(node: &[u8]) -> bool {
     let is_root_slice = &node[IS_ROOT_OFFSET..IS_ROOT_OFFSET + IS_ROOT_SIZE];
     let is_root = u8::from_le_bytes(is_root_slice.try_into().unwrap());
     match is_root {
@@ -208,13 +208,16 @@ pub fn set_node_root(node: &mut [u8], is_root: bool) {
     }
 }
 
-pub fn set_next_leaf(node: &mut [u8], next_leaf: u32) {
+fn set_next_leaf(node: &mut [u8], next_leaf: u32) {
     let next_leaf_slice = &mut node
         [LEAF_NODE_NEXT_LEAF_OFFSET..LEAF_NODE_NEXT_LEAF_OFFSET + LEAF_NODE_NEXT_LEAF_SIZE];
     next_leaf_slice.copy_from_slice(&next_leaf.to_le_bytes());
 }
 
-pub fn create_new_root(table: &mut Table, right_child_page_num: usize) {
+fn create_new_root(table: &mut Table, right_child_page_num: usize) {
+    // populating the right child page in the pager
+    let _right_child = table.pager.get_page(right_child_page_num);
+    
     let left_child_page_num = table.pager.get_unused_page_num();
 
     let root = table.pager.get_page(table.root_page_num);
@@ -242,8 +245,7 @@ pub fn create_new_root(table: &mut Table, right_child_page_num: usize) {
             let left_child_num_keys = internal_node_num_keys(new_left_child_buffer);
             for i in 0..left_child_num_keys {
                 child_node = table.pager.get_page(
-                    usize::from_le_bytes(internal_node_child(new_left_child_buffer, i as usize).try_into().unwrap()),
-                );
+                    internal_node_child_page_num(new_left_child_buffer, i as usize));
                 set_node_parent(child_node, left_child_page_num as u32);
             }
 
@@ -268,6 +270,7 @@ pub fn create_new_root(table: &mut Table, right_child_page_num: usize) {
     // copy the buffers back to the pages
     let root = table.pager.get_page(table.root_page_num);
     root.copy_from_slice(new_root_buffer);
+
     let left_child = table.pager.get_page(left_child_page_num);
     left_child.copy_from_slice(new_left_child_buffer);
     set_node_parent(left_child, table.root_page_num as u32);
@@ -326,7 +329,7 @@ fn internal_node_insert(table: &mut Table, parent_page_num: usize, child_page_nu
             let source_offset = INTERNAL_NODE_HEADER_SIZE + i * INTERNAL_NODE_CELL_SIZE;
             let cloned_slice =
                 parent_node_buffer[source_offset..source_offset + INTERNAL_NODE_CELL_SIZE].to_vec();
-            parent_node_buffer[destination_offset..destination_offset + INTERNAL_NODE_CELL_SIZE]
+                parent_node_buffer[destination_offset..destination_offset + INTERNAL_NODE_CELL_SIZE]
                 .copy_from_slice(&cloned_slice);
         }
         set_internal_node_child(parent_node_buffer, child_page_num, index);
@@ -366,6 +369,7 @@ fn internal_node_split_and_insert(
     let new_node_buffer = &mut [b'\0'; PAGE_SIZE];
     if splitting_root {
         create_new_root(table, new_page_num);
+        new_node_buffer.copy_from_slice(table.pager.get_page(new_page_num));
         parent_node = table.pager.get_page(table.root_page_num);
         parent_node_buffer.copy_from_slice(parent_node);
         old_page_num =
@@ -388,6 +392,7 @@ fn internal_node_split_and_insert(
     );
     // First put the right child in the new node and set right child to invalid
     internal_node_insert(table, new_page_num, cur_page_num);
+    new_node_buffer.copy_from_slice(table.pager.get_page(new_page_num));
 
     let mut cur = table.pager.get_page(cur_page_num);
     set_node_parent(cur, new_page_num as u32);
@@ -407,6 +412,8 @@ fn internal_node_split_and_insert(
         cur.copy_from_slice(cur_node_buffer);
     }
 
+    new_node_buffer.copy_from_slice(table.pager.get_page(new_page_num));
+
     // Set child before middle key which is now the highest key to be node's right child
     // and decrement the number of keys
     let old_num_keys = internal_node_num_keys(old_node_buffer);
@@ -425,6 +432,7 @@ fn internal_node_split_and_insert(
         new_page_num
     };
     internal_node_insert(table, destination_page_num, child_page_num);
+    new_node_buffer.copy_from_slice(table.pager.get_page(new_page_num));
     let child_node = table.pager.get_page(child_page_num);
     set_node_parent(child_node, destination_page_num as u32);
 
@@ -439,6 +447,7 @@ fn internal_node_split_and_insert(
 
     if !splitting_root {
         internal_node_insert(table, get_node_parent(old_node_buffer) as usize, new_page_num);
+        new_node_buffer.copy_from_slice(table.pager.get_page(new_page_num));
         set_node_parent(new_node_buffer, get_node_parent(old_node_buffer));
     }
 
@@ -478,36 +487,40 @@ pub fn set_internal_node_right_child(node: &mut [u8], right_child_page_num: usiz
     internal_node_right_child(node).copy_from_slice(&right_child_page_num.to_le_bytes());
 }
 
-pub fn internal_node_right_child(node: &mut [u8]) -> &mut [u8] {
+fn internal_node_right_child(node: &mut [u8]) -> &mut [u8] {
     node[INTERNAL_NODE_RIGHT_CHILD_OFFSET
         ..INTERNAL_NODE_RIGHT_CHILD_OFFSET + INTERNAL_NODE_RIGHT_CHILD_SIZE]
         .as_mut()
 }
 
-pub fn internal_node_right_child_unmut(node: &[u8]) -> &[u8] {
+fn internal_node_right_child_unmut(node: &[u8]) -> &[u8] {
     node[INTERNAL_NODE_RIGHT_CHILD_OFFSET
         ..INTERNAL_NODE_RIGHT_CHILD_OFFSET + INTERNAL_NODE_RIGHT_CHILD_SIZE]
         .as_ref()
 }
 
-pub fn internal_node_cell(node: &[u8], cell_num: usize) -> &[u8] {
+fn internal_node_cell(node: &[u8], cell_num: usize) -> &[u8] {
     let cell_offset = INTERNAL_NODE_HEADER_SIZE + cell_num * INTERNAL_NODE_CELL_SIZE;
     &node[cell_offset..cell_offset + INTERNAL_NODE_CELL_SIZE]
 }
 
-pub fn internal_node_cell_mut(node: &mut [u8], cell_num: usize) -> &mut [u8] {
+fn internal_node_cell_mut(node: &mut [u8], cell_num: usize) -> &mut [u8] {
     let cell_offset = INTERNAL_NODE_HEADER_SIZE + cell_num * INTERNAL_NODE_CELL_SIZE;
     &mut node[cell_offset..cell_offset + INTERNAL_NODE_CELL_SIZE]
 }
 
+fn internal_node_child_page_num(node: &mut [u8], cell_num: usize) -> usize {
+    usize::from_le_bytes(internal_node_cell_mut(node, cell_num)[..INTERNAL_NODE_CHILD_SIZE].try_into().unwrap())
+}
+
 pub fn internal_node_key(node: &[u8], cell_num: usize) -> &[u8] {
     let cell = internal_node_cell(node, cell_num);
-    &cell[0..INTERNAL_NODE_KEY_SIZE]
+    &cell[INTERNAL_NODE_CHILD_SIZE..INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE]
 }
 
 fn set_internal_node_key(node: &mut [u8], key: u32, cell_num: usize) {
     let cell = internal_node_cell_mut(node, cell_num);
-    cell[0..INTERNAL_NODE_KEY_SIZE].copy_from_slice(&key.to_le_bytes());
+    cell[INTERNAL_NODE_CHILD_SIZE..INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE].copy_from_slice(&key.to_le_bytes());
 }
 
 fn set_internal_node_child(node: &mut [u8], child_page_num: usize, child_num: usize) {
@@ -529,13 +542,13 @@ pub fn internal_node_child(node: &mut [u8], child_num: usize) -> &mut [u8] {
         }
         internal_node_right_child(node)
     } else {
+        let child_page_num = internal_node_child_page_num(node, child_num);
         let child_node = internal_node_cell_mut(node, child_num);
-        let child_page_num = usize::from_le_bytes(child_node.try_into().unwrap());
         if child_page_num == INVALID_PAGE_NUMBER {
             eprintln!("Tried to access child {} > {}.", child_num, num_keys);
             panic!("Tried to access child out of bounds.");
         }
-        child_node
+        child_node[..INTERNAL_NODE_CHILD_SIZE].as_mut()
     }
 }
 
@@ -581,9 +594,8 @@ pub fn set_node_parent(node: &mut [u8], parent: u32) {
 
 pub fn update_internal_node_key(node: &mut [u8], new_key: u32, old_child_num: usize) {
     let cell = internal_node_cell_mut(node, old_child_num);
-    cell[..INTERNAL_NODE_CHILD_SIZE].copy_from_slice(&new_key.to_le_bytes());
+    cell[INTERNAL_NODE_CHILD_SIZE..INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE].copy_from_slice(&new_key.to_le_bytes());
 }
-
 pub fn print_node_contents(node: &mut [u8]) {
     println!("-------------------------------------------------");
     match get_node_type(node) {
@@ -591,6 +603,7 @@ pub fn print_node_contents(node: &mut [u8]) {
             println!("Node type: Internal");
             println!("Is root: {}", is_node_root(node));
             println!("Num keys: {}", internal_node_num_keys(node));
+            println!("Parent: {}", get_node_parent(node));
             println!(
                 "Right child: {}",
                 usize::from_le_bytes(internal_node_right_child(node).try_into().unwrap())
@@ -610,6 +623,7 @@ pub fn print_node_contents(node: &mut [u8]) {
             println!("Node type: Leaf");
             println!("Is root: {}", is_node_root(node));
             println!("Num cells: {}", leaf_node_num_cells(node));
+            println!("Parent: {}", get_node_parent(node));
             for i in 0..leaf_node_num_cells(node) {
                 print_cell(node, i as usize);
             }
