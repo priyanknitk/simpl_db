@@ -117,7 +117,7 @@ pub fn leaf_node_split_and_insert(cursor: &mut Cursor, _key: u32, row_to_insert:
     let old_node = cursor.table.pager.get_page_unmut(cursor.page_num);
 
     // copy old node to a temporary buffer
-    let old_node_buffer = &mut [b'\0'; PAGE_SIZE];
+    let old_node_buffer = &mut [b'\0'; PAGE_SIZE][..];
     old_node_buffer.copy_from_slice(old_node);
 
     let old_max_key = get_node_max_key(cursor.table, old_node_buffer);
@@ -151,9 +151,7 @@ pub fn leaf_node_split_and_insert(cursor: &mut Cursor, _key: u32, row_to_insert:
     set_next_leaf(new_node_buffer, leaf_node_next_leaf(old_node_buffer));
     set_next_leaf(old_node_buffer, new_page_num as u32);
 
-    let new_node = cursor.table.pager.get_page(new_page_num);
-    // copy new_node_buffer to new_node
-    new_node.copy_from_slice(new_node_buffer);
+    let new_node = cursor.table.pager.set_page(new_page_num, new_node_buffer.try_into().unwrap());
 
     initialize_leaf_node(new_node);
 
@@ -164,13 +162,10 @@ pub fn leaf_node_split_and_insert(cursor: &mut Cursor, _key: u32, row_to_insert:
     set_leaf_node_num_cells(new_node, new_node_num_cells);
     set_leaf_node_num_cells(old_node_buffer, old_node_num_cells);
 
-    let old_node = cursor.table.pager.get_page(cursor.page_num);
-
-    // copy old_node_buffer to old_node
-    old_node.copy_from_slice(old_node_buffer);
+    let old_node = cursor.table.pager.set_page(cursor.page_num, old_node_buffer.try_into().unwrap());
 
     if is_node_root(old_node) {
-        return create_new_root(cursor.table, new_page_num);
+        create_new_root(cursor.table, new_page_num)
     } else {
         let parent_page_num = get_node_parent(old_node);
         let new_max_key = get_node_max_key(cursor.table, old_node_buffer);

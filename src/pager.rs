@@ -97,6 +97,12 @@ impl Pager {
         self.pages[page_num].as_mut().unwrap()
     }
 
+    pub fn set_page(&mut self, page_num: usize, page: [u8; PAGE_SIZE]) -> &mut [u8] {
+        self.get_page(page_num);
+        self.pages[page_num] = Some(page);
+        self.pages[page_num].as_mut().unwrap()
+    }
+
 
     pub fn get_page_unmut(&self, page_num: usize) -> &[u8] {
         if page_num > TABLE_MAX_PAGES {
