@@ -66,7 +66,7 @@ impl Table {
         }
     }
 
-    pub fn internal_node_find_child(&mut self, root_node: &mut [u8], key: u32, num_keys: u32) -> usize {
+    pub fn internal_node_find_child(&self, root_node: &[u8], key: u32, num_keys: u32) -> usize {
         let mut min_index = 0;
         let mut max_index = num_keys as usize;
         while max_index != min_index {
